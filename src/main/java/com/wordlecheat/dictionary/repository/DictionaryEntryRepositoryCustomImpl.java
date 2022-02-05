@@ -34,6 +34,19 @@ public class DictionaryEntryRepositoryCustomImpl implements DictionaryEntryRepos
             Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
         initQueryProps(false);
 
+        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters, knownNonLetterPlacements);
+
+        query.select(dictionaryEntryRoot).where(cb.and(predicates.toArray(new Predicate[predicates.size()])))
+                .orderBy(cb.desc(frequencyPath));
+
+        TypedQuery<DictionaryEntry> selectQuery = entityManager.createQuery(query);
+        selectQuery.setMaxResults(1);
+
+        return selectQuery.getSingleResult();
+    }
+
+    private void buildLetterHintPredicates(String[] knownLetterPlacements, Set<String> containedLetters,
+            Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
         predicates.add(cb.equal(cb.length(wordPath), knownLetterPlacements.length));
 
         StringBuilder sb = new StringBuilder();
@@ -65,14 +78,23 @@ public class DictionaryEntryRepositoryCustomImpl implements DictionaryEntryRepos
         for (String notContainedLetter : notContainedLetters) {
             predicates.add(cb.notLike(cb.lower(wordPath), "%" + notContainedLetter.toLowerCase() + "%"));
         }
+    }
 
-        query.select(dictionaryEntryRoot).where(cb.and(predicates.toArray(new Predicate[predicates.size()])))
-                .orderBy(cb.desc(frequencyPath));
-
+    @Override
+    public List<DictionaryEntry> findAllPossibleWords(String[] knownLetterPlacements, Set<String> containedLetters, Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
+        initQueryProps(false);
+        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters, knownNonLetterPlacements);
+        query.select(dictionaryEntryRoot).where(cb.and(predicates.toArray(new Predicate[predicates.size()])));
         TypedQuery<DictionaryEntry> selectQuery = entityManager.createQuery(query);
-        selectQuery.setMaxResults(1);
+        return selectQuery.getResultList();
+    }
 
-        return selectQuery.getSingleResult();
+    @Override
+    public long getCountOfPossibleWords(String[] knownLetterPlacements, Set<String> containedLetters, Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
+        initQueryProps(true);
+        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters, knownNonLetterPlacements);
+        countQuery.select(cb.count(wordPath)).where(cb.and(predicates.toArray(new Predicate[predicates.size()])));
+        return entityManager.createQuery(countQuery).getSingleResult();
     }
 
     private void initQueryProps(boolean isCountQuery) {

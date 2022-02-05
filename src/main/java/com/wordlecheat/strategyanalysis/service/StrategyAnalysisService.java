@@ -1,18 +1,12 @@
 package com.wordlecheat.strategyanalysis.service;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 import com.wordlecheat.dictionary.repository.DictionaryEntryRepository;
 import com.wordlecheat.strategyanalysis.game.GameState;
 import com.wordlecheat.strategyanalysis.game.Guess;
 import com.wordlecheat.strategyanalysis.game.GuessOutcome;
-import com.wordlecheat.strategyanalysis.game.LetterPlacement;
 import com.wordlecheat.strategyanalysis.object.Strategy;
 import com.wordlecheat.strategyanalysis.object.StrategyExecution;
-import com.wordlecheat.strategyanalysis.repository.LetterPlacementRepository;
 import com.wordlecheat.strategyanalysis.repository.StrategyExecutionRepository;
 
 import org.slf4j.Logger;
@@ -30,15 +24,13 @@ public class StrategyAnalysisService {
 
     private DictionaryEntryRepository dictionaryEntryRepository;
     private StrategyExecutionRepository strategyExecutionRepository;
-    private LetterPlacementRepository letterPlacementRepository;
     private GuessService guessService;
     
     @Autowired
     public StrategyAnalysisService(DictionaryEntryRepository dictionaryEntryRepository,
-    StrategyExecutionRepository strategyExecutionRepository, LetterPlacementRepository letterPlacementRepository, GuessService guessService) {
+    StrategyExecutionRepository strategyExecutionRepository, GuessService guessService) {
         this.dictionaryEntryRepository = dictionaryEntryRepository;
         this.strategyExecutionRepository = strategyExecutionRepository;
-        this.letterPlacementRepository = letterPlacementRepository;
         this.guessService = guessService;
     }
 
@@ -64,61 +56,8 @@ public class StrategyAnalysisService {
     }
 
     private void makeGuess(StrategyExecution strategyExecution, GameState gameState) {
-        int guessNumber = strategyExecution.getGuesses().size() + 1;
-        DictionaryEntry dictionaryEntry = strategyExecution.getStrategy().getGuess(guessNumber, guessService, gameState);
-        Guess guess = new Guess(dictionaryEntry, guessNumber);
-        setGuessInputs(guess, strategyExecution, gameState.getKnownLetterPlacements(), gameState.getContainedLetters(), gameState.getNotContainedLetters(), gameState.getKnownNonLetterPlacements());
+        gameState.setGuessNumber(strategyExecution.getGuesses().size() + 1);
+        Guess guess = strategyExecution.getStrategy().getGuess(guessService, gameState);
         strategyExecution.addGuess(guess);
-    }
-
-    private void setGuessInputs(Guess guess, StrategyExecution strategyExecution, String[] knownLetterPlacements, Set<String> containedLetters, Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
-        Set<String> containedLettersInput = new HashSet<>();
-        containedLettersInput.addAll(containedLetters);
-        guess.setContainedLettersInput(containedLettersInput);
-        Set<String> notContainedLettersInput = new HashSet<>();
-        notContainedLettersInput.addAll(notContainedLetters);
-        guess.setNotContainedLettersInput(notContainedLettersInput);
-        Set<LetterPlacement> knownLetterPlacementsInput = convertToLetterPlacements(knownLetterPlacements);
-        guess.setKnownLetterPlacementsInput(knownLetterPlacementsInput);
-        Set<LetterPlacement> knownNonLetterPlacementsInput = new HashSet<>();
-        for (String[] knownLetterNonPlacementInput : knownNonLetterPlacements) {
-            addNewOnly(knownNonLetterPlacementsInput, convertToLetterPlacements(knownLetterNonPlacementInput));
-        }
-        guess.setKnownNonLetterPlacementsInput(knownNonLetterPlacementsInput);
-    }
-
-    private void addNewOnly(Set<LetterPlacement> gameStateKnownNonLetterPlacements, Set<LetterPlacement> addedKnownNonLetterPlacements) {
-        for (LetterPlacement addedLetterPlacement : addedKnownNonLetterPlacements) {
-            boolean addLetterPlacement = true;
-            for (LetterPlacement gameStateLetterPlacement : gameStateKnownNonLetterPlacements) {
-                if (gameStateLetterPlacement.getLetter().equalsIgnoreCase(addedLetterPlacement.getLetter()) && gameStateLetterPlacement.getStringIndex() == addedLetterPlacement.getStringIndex()) {
-                    addLetterPlacement = false;
-                }
-            }
-            if (addLetterPlacement) {
-                gameStateKnownNonLetterPlacements.add(addedLetterPlacement);
-            }
-        }
-    }
-
-    private Set<LetterPlacement> convertToLetterPlacements(String[] letters) {
-        Set<LetterPlacement> letterPlacements = new HashSet<>();
-        for (int i = 0; i < letters.length; i++) {
-            String letter = letters[i];
-            if (letter != null) {
-                List<LetterPlacement> letterPlacementsList = letterPlacementRepository.findByLetterAndStringIndex(letter, i);
-                LetterPlacement letterPlacement;
-                if (letterPlacementsList.isEmpty()) {
-                    letterPlacement = new LetterPlacement();
-                    letterPlacement.setLetter(letter);
-                    letterPlacement.setStringIndex(i);
-                    letterPlacementRepository.save(letterPlacement);
-                } else {
-                    letterPlacement = letterPlacementsList.get(0);
-                }
-                letterPlacements.add(letterPlacement);
-            }
-        }
-        return letterPlacements;
     }
 }

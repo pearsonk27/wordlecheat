@@ -1,5 +1,6 @@
 package com.wordlecheat.strategyanalysis.object;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -49,12 +50,13 @@ public class StrategyExecution {
 
     public StrategyExecution() {
         this.creationDate = new Date();
+        this.guesses = new ArrayList<>();
     }
 
     public StrategyExecution(Strategy strategy, DictionaryEntry wordleWord) {
+        this();
         this.strategy = strategy;
         this.wordleWord = wordleWord;
-        this.creationDate = new Date();
     }
 
     public int getId() {

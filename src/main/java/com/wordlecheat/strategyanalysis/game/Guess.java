@@ -66,11 +66,19 @@ public class Guess {
     )
     private Set<LetterPlacement> knownNonLetterPlacementsInput;
 
+    @Column(name = "count_possible_answers")
+    private int countPossibleAnswers;
+
     public Guess() {}
 
     public Guess(DictionaryEntry dictionaryEntry, int guessNumber) {
         this.dictionaryEntry = dictionaryEntry;
         this.guessNumber = guessNumber;
+    }
+
+    public Guess(DictionaryEntry dictionaryEntry, int guessNumber, int countPossibleAnswers) {
+        this(dictionaryEntry, guessNumber);
+        this.countPossibleAnswers = countPossibleAnswers;
     }
 
     public int getId() {
@@ -137,11 +145,19 @@ public class Guess {
         this.knownNonLetterPlacementsInput = knownNonLetterPlacementsInput;
     }
 
+    public int getCountPossibleAnswers() {
+        return countPossibleAnswers;
+    }
+
+    public void setCountPossibleAnswers(int countPossibleAnswers) {
+        this.countPossibleAnswers = countPossibleAnswers;
+    }
+
     @Override
     public String toString() {
         return "Guess [containedLettersInput=" + containedLettersInput + ", dictionaryEntry=" + dictionaryEntry
                 + ", guessNumber=" + guessNumber + ", id=" + id + ", knownLetterPlacementsInput="
                 + knownLetterPlacementsInput + ", knownNonLetterPlacementsInput=" + knownNonLetterPlacementsInput
-                + ", notContainedLettersInput=" + notContainedLettersInput + "]";
+                + ", notContainedLettersInput=" + notContainedLettersInput + ", countPossibleAnswers=" + countPossibleAnswers + "]";
     }
 }

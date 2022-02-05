@@ -3,13 +3,13 @@ package com.wordlecheat.strategyanalysis.object;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.wordlecheat.dictionary.object.DictionaryEntry;
 import com.wordlecheat.strategyanalysis.game.GameState;
+import com.wordlecheat.strategyanalysis.game.Guess;
 import com.wordlecheat.strategyanalysis.service.GuessService;
 
 public enum Strategy {
 
-    RANDOM_GUESS(GuessStrategy.PREFER_WORD_FREQUENCY, (GuessService guessService, GameState gameState) -> guessService.getRandomGuess(gameState.getKnownLetterPlacements().length)),
+    RANDOM_GUESS(GuessStrategy.PREFER_WORD_FREQUENCY, (GuessService guessService, GameState gameState) -> guessService.getRandomGuess(gameState, gameState.getKnownLetterPlacements().length)),
     ONE_EXPLORATION(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate"),
     TWO_EXPLORATIONS(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate", "Sound"),
     THREE_EXPLORATIONS(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate", "Sound", "Lymph"),
@@ -20,7 +20,7 @@ public enum Strategy {
     Strategy(GuessStrategy remainingGuessMethodStrategy, String... words) {
         this.guessMethods = new ArrayList<>();
         for (String word : words) {
-            this.guessMethods.add((GuessService guessService, GameState gameState) -> guessService.getDictionaryEntryForWord(word));
+            this.guessMethods.add((GuessService guessService, GameState gameState) -> guessService.getDictionaryEntryForWord(gameState, word));
         }
         fillRemainingGuessMethods(remainingGuessMethodStrategy);
     }
@@ -43,8 +43,8 @@ public enum Strategy {
         }
     }
 
-    public DictionaryEntry getGuess(int guessNumber, GuessService guessService, GameState gameState) {
-        return guessMethods.get(guessNumber - 1).makeGuess(guessService, gameState);
+    public Guess getGuess(GuessService guessService, GameState gameState) {
+        return guessMethods.get(gameState.getGuessNumber() - 1).makeGuess(guessService, gameState);
     }
 
     private enum GuessStrategy {

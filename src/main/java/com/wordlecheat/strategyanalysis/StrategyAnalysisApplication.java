@@ -1,5 +1,6 @@
 package com.wordlecheat.strategyanalysis;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.wordlecheat.dictionary.object.DictionaryEntry;
@@ -29,7 +30,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 public class StrategyAnalysisApplication {
     
     private static final Logger log = LoggerFactory.getLogger(StrategyAnalysisApplication.class);
-    private static final String[] wordleWords = WordleWords.WORDLE_WORDS;
+    // private static final String[] wordleWords = WordleWords.WORDLE_WORDS;
+    private static final String[] wordleWords = Arrays.copyOfRange(WordleWords.WORDLE_WORDS, 0, 10);
 
     public static void main(String[] args) {
 		SpringApplication.run(StrategyAnalysisApplication.class, args);
@@ -39,8 +41,8 @@ public class StrategyAnalysisApplication {
     public CommandLineRunner run(StrategyAnalysisService strategyAnalysisService, GuessInputRegressionAnalysisService guessInputRegressionAnalysisService, DictionaryEntryRepository dictionaryEntryRepository, StrategySuccessRateRepository strategySuccessRateRepository) {
         return (args) -> {
             compileStrategyData(strategyAnalysisService, dictionaryEntryRepository);
-            printStrategySuccessRates(strategySuccessRateRepository);
-            runRegression(guessInputRegressionAnalysisService);
+            // printStrategySuccessRates(strategySuccessRateRepository);
+            // runRegression(guessInputRegressionAnalysisService);
         };
     }
 
@@ -57,10 +59,10 @@ public class StrategyAnalysisApplication {
 
     private void compileStrategyData(StrategyAnalysisService strategyAnalysisService, DictionaryEntryRepository dictionaryEntryRepository) {
         List<DictionaryEntry> dictionaryEntries = dictionaryEntryRepository.findByFrequencyGreaterThan(0.0);
-        log.info("Starting analysis of {} strategies, each on {} words", Strategy.values().length, wordleWords.length);
+        log.info("Starting analysis of {} strategies, each on {} words", Strategy.values().length, dictionaryEntries.size());
         for (Strategy strategy : Strategy.values()) {
             for (DictionaryEntry wordleWord : dictionaryEntries) {
-                strategyAnalysisService.playGame(strategy, wordleWord.getWord());
+                strategyAnalysisService.playGame(strategy, wordleWord);
             }
         }
     }

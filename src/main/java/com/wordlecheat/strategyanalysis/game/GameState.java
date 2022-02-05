@@ -10,6 +10,7 @@ public class GameState {
     private Set<String> notContainedLetters;
     private String[] knownLetterPlacements;
     private Set<String[]> knownNonLetterPlacements;
+    private int guessNumber;
     
     public GameState(int wordLength) {
         containedLetters = new HashSet<>();
@@ -45,6 +46,14 @@ public class GameState {
 
     public Set<String[]> getKnownNonLetterPlacements() {
         return knownNonLetterPlacements;
+    }
+
+    public int getGuessNumber() {
+        return guessNumber;
+    }
+
+    public void setGuessNumber(int guessNumber) {
+        this.guessNumber = guessNumber;
     }
 
     @Override
