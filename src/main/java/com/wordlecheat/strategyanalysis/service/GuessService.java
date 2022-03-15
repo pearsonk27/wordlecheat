@@ -13,6 +13,9 @@ import com.wordlecheat.strategyanalysis.game.Guess;
 import com.wordlecheat.strategyanalysis.game.LetterPlacement;
 import com.wordlecheat.strategyanalysis.repository.LetterPlacementRepository;
 
+import org.hibernate.service.spi.ServiceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Service;
 @Component
 @Service
 public class GuessService {
+
+    private static final Logger log = LoggerFactory.getLogger(GuessService.class);
 
     private DictionaryEntryRepository dictionaryEntryRepository;
     private LetterPlacementRepository letterPlacementRepository;
@@ -31,26 +36,48 @@ public class GuessService {
     }
     
     public Guess getDictionaryEntryForWord(GameState gameState, String word) {
-        Guess guess = new Guess(dictionaryEntryRepository.findByWordIgnoreCase(word).get(0), gameState.getGuessNumber(), (int) dictionaryEntryRepository.getCountOfPossibleWords(gameState.getKnownLetterPlacements(), gameState.getContainedLetters(), gameState.getNotContainedLetters(), gameState.getKnownNonLetterPlacements()));
+        long startTime = System.currentTimeMillis();
+        DictionaryEntry dictionaryEntry;
+        try {
+            dictionaryEntry = dictionaryEntryRepository.findByWordIgnoreCase(word).get(0);
+        } catch (IndexOutOfBoundsException e) {
+            throw new ServiceException("Cannot find word '" + word + "' in database", e);
+        }
+        log.info("{} found in {} ms", word, System.currentTimeMillis() - startTime);
+
+        startTime = System.currentTimeMillis();
+        int countPossibleWords = (int) dictionaryEntryRepository.getCountOfPossibleWords(gameState.getKnownLetterPlacements(), gameState.getContainedLetters(), gameState.getNotContainedLetters(), gameState.getKnownNonLetterPlacements());
+        log.info("Count of remaining possible words found in {} ms", System.currentTimeMillis() - startTime);
+
+        Guess guess = new Guess(dictionaryEntry, gameState.getGuessNumber(), countPossibleWords);
         setGuessInputs(guess, gameState);
         return guess;
     }
 
     public Guess getRandomGuess(GameState gameState, int wordLength) {
+        long startTime = System.currentTimeMillis();
         Guess guess = new Guess(dictionaryEntryRepository.getRandomNLetterWord(wordLength), gameState.getGuessNumber(), (int) dictionaryEntryRepository.getCountOfPossibleWords(gameState.getKnownLetterPlacements(), gameState.getContainedLetters(), gameState.getNotContainedLetters(), gameState.getKnownNonLetterPlacements()));
+        log.info("Random {} letter word found in {}", wordLength, System.currentTimeMillis() - startTime);
         setGuessInputs(guess, gameState);
         return guess;
     }
 
     public Guess getHighestWordFrequencyWord(GameState gameState) {
+        long startTime = System.currentTimeMillis();
         List<DictionaryEntry> dictionaryEntries = dictionaryEntryRepository.findAllPossibleWords(gameState.getKnownLetterPlacements(), gameState.getContainedLetters(), gameState.getNotContainedLetters(), gameState.getKnownNonLetterPlacements());
+        log.info("Found list of all possible words ({}) in {} ms", dictionaryEntries.size(), System.currentTimeMillis() - startTime);
+
+        startTime = System.currentTimeMillis();
         DictionaryEntry dictionaryEntry = Collections.max(dictionaryEntries, Comparator.comparing(c -> c.getFrequency()));
+        log.info("Found max frequency word in {} ms", System.currentTimeMillis() - startTime);
+
         Guess guess = new Guess(dictionaryEntry, gameState.getGuessNumber(), dictionaryEntries.size());
         setGuessInputs(guess, gameState);
         return guess;
     }
 
     private void setGuessInputs(Guess guess, GameState gameState) {
+        long startTime = System.currentTimeMillis();
         Set<String> containedLettersInput = new HashSet<>();
         containedLettersInput.addAll(gameState.getContainedLetters());
         guess.setContainedLettersInput(containedLettersInput);
@@ -64,6 +91,7 @@ public class GuessService {
             addNewOnly(knownNonLetterPlacementsInput, convertToLetterPlacements(knownLetterNonPlacementInput));
         }
         guess.setKnownNonLetterPlacementsInput(knownNonLetterPlacementsInput);
+        log.info("Guess Inputs built in {} ms", System.currentTimeMillis() - startTime);
     }
 
     private void addNewOnly(Set<LetterPlacement> gameStateKnownNonLetterPlacements, Set<LetterPlacement> addedKnownNonLetterPlacements) {
@@ -102,8 +130,14 @@ public class GuessService {
     }
 
     public Guess getHighestLetterFrequencyWord(GameState gameState) {
+        long startTime = System.currentTimeMillis();
         List<DictionaryEntry> dictionaryEntries = dictionaryEntryRepository.findAllPossibleWords(gameState.getKnownLetterPlacements(), gameState.getContainedLetters(), gameState.getNotContainedLetters(), gameState.getKnownNonLetterPlacements());
+        log.info("Found list of all possible words ({}) in {} ms", dictionaryEntries.size(), System.currentTimeMillis() - startTime);
+
+        startTime = System.currentTimeMillis();
         DictionaryEntry dictionaryEntry = Collections.max(dictionaryEntries, Comparator.comparing(c -> c.getLetterFrequency()));
+        log.info("Found max letterFrequency word in {} ms", System.currentTimeMillis() - startTime);
+
         Guess guess = new Guess(dictionaryEntry, gameState.getGuessNumber(), dictionaryEntries.size());
         setGuessInputs(guess, gameState);
         return guess;

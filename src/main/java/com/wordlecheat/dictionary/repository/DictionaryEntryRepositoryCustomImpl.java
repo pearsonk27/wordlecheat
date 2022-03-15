@@ -13,10 +13,19 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
+import javax.transaction.Transactional;
 
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 
+import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory;
+import org.hibernate.hql.spi.QueryTranslator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DictionaryEntryRepositoryCustomImpl implements DictionaryEntryRepositoryCustom {
+
+    private static final Logger log = LoggerFactory.getLogger(DictionaryEntryRepositoryCustomImpl.class);
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -34,7 +43,8 @@ public class DictionaryEntryRepositoryCustomImpl implements DictionaryEntryRepos
             Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
         initQueryProps(false);
 
-        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters, knownNonLetterPlacements);
+        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters,
+                knownNonLetterPlacements);
 
         query.select(dictionaryEntryRoot).where(cb.and(predicates.toArray(new Predicate[predicates.size()])))
                 .orderBy(cb.desc(frequencyPath));
@@ -58,7 +68,7 @@ public class DictionaryEntryRepositoryCustomImpl implements DictionaryEntryRepos
             }
         }
         predicates.add(cb.like(cb.lower(wordPath), sb.toString()));
-        
+
         for (String[] knownNonLetterPlacementSets : knownNonLetterPlacements) {
             sb = new StringBuilder();
             for (String knownNonLetterPlacement : knownNonLetterPlacementSets) {
@@ -80,19 +90,34 @@ public class DictionaryEntryRepositoryCustomImpl implements DictionaryEntryRepos
         }
     }
 
+    @Transactional
     @Override
-    public List<DictionaryEntry> findAllPossibleWords(String[] knownLetterPlacements, Set<String> containedLetters, Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
+    public List<DictionaryEntry> findAllPossibleWords(String[] knownLetterPlacements, Set<String> containedLetters,
+            Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
         initQueryProps(false);
-        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters, knownNonLetterPlacements);
+        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters,
+                knownNonLetterPlacements);
         query.select(dictionaryEntryRoot).where(cb.and(predicates.toArray(new Predicate[predicates.size()])));
         TypedQuery<DictionaryEntry> selectQuery = entityManager.createQuery(query);
+
+        String hqlQueryString = selectQuery.unwrap(org.hibernate.query.Query.class).getQueryString();
+        ASTQueryTranslatorFactory queryTranslatorFactory = new ASTQueryTranslatorFactory();
+        SessionImplementor hibernateSession = entityManager.unwrap(SessionImplementor.class);
+        QueryTranslator queryTranslator = queryTranslatorFactory.createQueryTranslator("", hqlQueryString,
+                java.util.Collections.EMPTY_MAP, hibernateSession.getFactory(), null);
+        queryTranslator.compile(java.util.Collections.EMPTY_MAP, false);
+        String sqlQueryString = queryTranslator.getSQLString();
+        log.info(sqlQueryString);
+
         return selectQuery.getResultList();
     }
 
     @Override
-    public long getCountOfPossibleWords(String[] knownLetterPlacements, Set<String> containedLetters, Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
+    public long getCountOfPossibleWords(String[] knownLetterPlacements, Set<String> containedLetters,
+            Set<String> notContainedLetters, Set<String[]> knownNonLetterPlacements) {
         initQueryProps(true);
-        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters, knownNonLetterPlacements);
+        buildLetterHintPredicates(knownLetterPlacements, containedLetters, notContainedLetters,
+                knownNonLetterPlacements);
         countQuery.select(cb.count(wordPath)).where(cb.and(predicates.toArray(new Predicate[predicates.size()])));
         return entityManager.createQuery(countQuery).getSingleResult();
     }

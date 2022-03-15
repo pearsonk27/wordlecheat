@@ -31,7 +31,7 @@ public class StrategyAnalysisApplication {
     
     private static final Logger log = LoggerFactory.getLogger(StrategyAnalysisApplication.class);
     // private static final String[] wordleWords = WordleWords.WORDLE_WORDS;
-    private static final String[] wordleWords = Arrays.copyOfRange(WordleWords.WORDLE_WORDS, 0, 10);
+    private static final String[] wordleWords = Arrays.copyOfRange(WordleWords.WORDLE_WORDS, 0, 2);
 
     public static void main(String[] args) {
 		SpringApplication.run(StrategyAnalysisApplication.class, args);
@@ -40,7 +40,8 @@ public class StrategyAnalysisApplication {
     @Bean
     public CommandLineRunner run(StrategyAnalysisService strategyAnalysisService, GuessInputRegressionAnalysisService guessInputRegressionAnalysisService, DictionaryEntryRepository dictionaryEntryRepository, StrategySuccessRateRepository strategySuccessRateRepository) {
         return (args) -> {
-            compileStrategyData(strategyAnalysisService, dictionaryEntryRepository);
+            // compileStrategyData(strategyAnalysisService, dictionaryEntryRepository);
+            compileStrategyDataUsingWordleWordsOnly(strategyAnalysisService, dictionaryEntryRepository);
             // printStrategySuccessRates(strategySuccessRateRepository);
             // runRegression(guessInputRegressionAnalysisService);
         };
@@ -62,6 +63,15 @@ public class StrategyAnalysisApplication {
         log.info("Starting analysis of {} strategies, each on {} words", Strategy.values().length, dictionaryEntries.size());
         for (Strategy strategy : Strategy.values()) {
             for (DictionaryEntry wordleWord : dictionaryEntries) {
+                strategyAnalysisService.playGame(strategy, wordleWord);
+            }
+        }
+    }
+
+    private void compileStrategyDataUsingWordleWordsOnly(StrategyAnalysisService strategyAnalysisService, DictionaryEntryRepository dictionaryEntryRepository) {
+        log.info("Starting analysis of {} strategies, each on {} words", Strategy.values().length, wordleWords.length);
+        for (Strategy strategy : Strategy.values()) {
+            for (String wordleWord : wordleWords) {
                 strategyAnalysisService.playGame(strategy, wordleWord);
             }
         }

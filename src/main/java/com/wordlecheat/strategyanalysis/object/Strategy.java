@@ -12,8 +12,7 @@ public enum Strategy {
     RANDOM_GUESS(GuessStrategy.PREFER_WORD_FREQUENCY, (GuessService guessService, GameState gameState) -> guessService.getRandomGuess(gameState, gameState.getKnownLetterPlacements().length)),
     ONE_EXPLORATION(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate"),
     TWO_EXPLORATIONS(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate", "Sound"),
-    THREE_EXPLORATIONS(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate", "Sound", "Lymph"),
-    ONE_EXPLORATION_SOARE(GuessStrategy.PREFER_WORD_FREQUENCY, "Soare");
+    THREE_EXPLORATIONS(GuessStrategy.PREFER_WORD_FREQUENCY, "Irate", "Sound", "Lymph");
 
     private List<GuessMethod> guessMethods;
 
