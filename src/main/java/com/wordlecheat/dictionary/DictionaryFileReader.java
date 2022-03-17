@@ -13,8 +13,7 @@ public class DictionaryFileReader {
 
     private static final Logger log = LoggerFactory.getLogger(DictionaryFileReader.class);
 
-    // private static String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static String ALPHABET = "X";
+    private static String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     private int currentLetterIndex;
     private BufferedReader dictionaryReader;

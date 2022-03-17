@@ -3,6 +3,7 @@ package com.wordlecheat.strategyanalysis;
 import java.util.Arrays;
 import java.util.List;
 
+import com.wordlecheat.builddb.BuildDbService;
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 import com.wordlecheat.dictionary.object.WordleWords;
 import com.wordlecheat.dictionary.repository.DictionaryEntryRepository;
@@ -15,35 +16,47 @@ import com.wordlecheat.strategyanalysis.service.StrategyAnalysisService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
 @EnableJpaRepositories({"com.wordlecheat.dictionary.repository", "com.wordlecheat.strategyanalysis.repository"})
 @EntityScan({"com.wordlecheat.dictionary.object", "com.wordlecheat.strategyanalysis.object", "com.wordlecheat.strategyanalysis.game"})
-@ComponentScan({"com.wordlecheat.dictionary.service", "com.wordlecheat.strategyanalysis.service"})
+@ComponentScan({"com.wordlecheat.dictionary.service", "com.wordlecheat.strategyanalysis.service", "com.wordlecheat.builddb"})
 public class StrategyAnalysisApplication {
     
     private static final Logger log = LoggerFactory.getLogger(StrategyAnalysisApplication.class);
     // private static final String[] wordleWords = WordleWords.WORDLE_WORDS;
     private static final String[] wordleWords = Arrays.copyOfRange(WordleWords.WORDLE_WORDS, 0, 2);
 
+    @Autowired
+    Environment env;
+
     public static void main(String[] args) {
 		SpringApplication.run(StrategyAnalysisApplication.class, args);
 	}
 
     @Bean
-    public CommandLineRunner run(StrategyAnalysisService strategyAnalysisService, GuessInputRegressionAnalysisService guessInputRegressionAnalysisService, DictionaryEntryRepository dictionaryEntryRepository, StrategySuccessRateRepository strategySuccessRateRepository) {
+    public CommandLineRunner run(StrategyAnalysisService strategyAnalysisService, GuessInputRegressionAnalysisService guessInputRegressionAnalysisService, DictionaryEntryRepository dictionaryEntryRepository, StrategySuccessRateRepository strategySuccessRateRepository, BuildDbService buildDbService) {
         return (args) -> {
             // compileStrategyData(strategyAnalysisService, dictionaryEntryRepository);
-            compileStrategyDataUsingWordleWordsOnly(strategyAnalysisService, dictionaryEntryRepository);
+            // compileStrategyDataUsingWordleWordsOnly(strategyAnalysisService, dictionaryEntryRepository);
             // printStrategySuccessRates(strategySuccessRateRepository);
             // runRegression(guessInputRegressionAnalysisService);
+            // buildDbService.buildDictionary();
+            
+            System.out.println("Profiles");
+            for (String profile : env.getActiveProfiles()) {
+                System.out.println(profile);
+            }
+            System.out.println(dictionaryEntryRepository.getRandomNLetterWord(5));
         };
     }
 
