@@ -20,7 +20,7 @@ public class GuessOutcomeTest {
         notContainedLetters.add("h");
         notContainedLetters.add("s");
         String[] knownLetterPlacements = new String[] { null, "a", null, null, null };
-        assertThat(guessOutcome.getNotContainedLetters()).isEqualTo(notContainedLetters);
+        assertThat(guessOutcome.getNotContainedLetters()).containsExactlyInAnyOrderElementsOf(notContainedLetters);
         assertThat(guessOutcome.getKnownLetterPlacements()).isEqualTo(knownLetterPlacements);
         assertThat(guessOutcome.getContainedLetters()).isEmpty();
     }
