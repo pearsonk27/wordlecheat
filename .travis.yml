@@ -1,0 +1,7 @@
+sudo: required
+services:
+  - docker
+
+script:
+  - docker build -t pearsonk27/wordlecheat .
+  - docker images pearsonk27/wordlecheat
