@@ -24,6 +24,7 @@ public class WordApiServiceTest {
         when(dictionaryEntryRepository.countByLastCheckedFrequencyBetween(any(), any())).thenReturn(0L);
         wordApiService = new WordApiService(dictionaryEntryRepository);
         Double frequency = wordApiService.getWordFrequency("word");
-        assertThat(frequency).isNotNull();
+        // Purposely fail
+        assertThat(frequency).isNull();
     }
 }
