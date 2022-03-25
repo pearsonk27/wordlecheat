@@ -1,7 +1,9 @@
-sudo: required
-services:
-  - docker
+language: java
 
+jdk: openjdk11
 script:
-  - docker build -t pearsonk27/wordlecheat .
-  - docker images pearsonk27/wordlecheat
+  - jdk_switcher use openjdk11
+
+branches:
+  only:
+  - master
