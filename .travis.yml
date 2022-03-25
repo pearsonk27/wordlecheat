@@ -2,7 +2,7 @@ language: java
 
 jdk: openjdk11
 script:
-  - java -version
+  - ./mvnw test -B
 
 branches:
   only:
