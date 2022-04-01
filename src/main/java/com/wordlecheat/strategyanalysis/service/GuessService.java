@@ -11,7 +11,6 @@ import com.wordlecheat.dictionary.repository.DictionaryEntryRepository;
 import com.wordlecheat.strategyanalysis.game.GameState;
 import com.wordlecheat.strategyanalysis.game.Guess;
 import com.wordlecheat.strategyanalysis.game.LetterPlacement;
-import com.wordlecheat.strategyanalysis.repository.LetterPlacementRepository;
 
 import org.hibernate.service.spi.ServiceException;
 import org.slf4j.Logger;
@@ -27,12 +26,12 @@ public class GuessService {
     private static final Logger log = LoggerFactory.getLogger(GuessService.class);
 
     private DictionaryEntryRepository dictionaryEntryRepository;
-    private LetterPlacementRepository letterPlacementRepository;
+    private LetterPlacementService letterPlacementService;
 
     @Autowired
-    public GuessService(DictionaryEntryRepository dictionaryEntryRepository, LetterPlacementRepository letterPlacementRepository) {
+    public GuessService(DictionaryEntryRepository dictionaryEntryRepository, LetterPlacementService letterPlacementService) {
         this.dictionaryEntryRepository = dictionaryEntryRepository;
-        this.letterPlacementRepository = letterPlacementRepository;
+        this.letterPlacementService = letterPlacementService;
     }
     
     public Guess getDictionaryEntryForWord(GameState gameState, String word) {
@@ -113,17 +112,7 @@ public class GuessService {
         for (int i = 0; i < letters.length; i++) {
             String letter = letters[i];
             if (letter != null) {
-                List<LetterPlacement> letterPlacementsList = letterPlacementRepository.findByLetterAndStringIndex(letter, i);
-                LetterPlacement letterPlacement;
-                if (letterPlacementsList.isEmpty()) {
-                    letterPlacement = new LetterPlacement();
-                    letterPlacement.setLetter(letter);
-                    letterPlacement.setStringIndex(i);
-                    letterPlacementRepository.save(letterPlacement);
-                } else {
-                    letterPlacement = letterPlacementsList.get(0);
-                }
-                letterPlacements.add(letterPlacement);
+                letterPlacements.add(letterPlacementService.getLetterPlacement(letter, i));
             }
         }
         return letterPlacements;

@@ -13,8 +13,12 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+
+import com.wordlecheat.strategyanalysis.game.LetterPlacement;
 
 @Entity
 @Table(name = "dictionary", indexes = @Index(columnList = "word"))
@@ -40,6 +44,14 @@ public class DictionaryEntry {
 
     @Column(name = "letter_frequency")
     private Double letterFrequency;
+
+    @ManyToMany(cascade = { CascadeType.MERGE })
+    @JoinTable(
+        name = "dictionary_entry_letter_placements", 
+        joinColumns = { @JoinColumn(name = "dictionary_id") }, 
+        inverseJoinColumns = { @JoinColumn(name = "letter_placement_id") }
+    )
+    private Set<LetterPlacement> letterPlacements;
 
     public DictionaryEntry() {
 
@@ -115,6 +127,14 @@ public class DictionaryEntry {
 
     public void setLetterFrequency(Double letterFrequency) {
         this.letterFrequency = letterFrequency;
+    }
+
+    public Set<LetterPlacement> getLetterPlacements() {
+        return letterPlacements;
+    }
+
+    public void setLetterPlacements(Set<LetterPlacement> letterPlacements) {
+        this.letterPlacements = letterPlacements;
     }
 
     @Override
