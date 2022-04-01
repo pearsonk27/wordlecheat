@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Date;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordlecheat.dictionary.object.DataMuseWord;
 import com.wordlecheat.dictionary.repository.DictionaryEntryRepository;
@@ -17,10 +18,8 @@ import com.wordlecheat.dictionary.repository.DictionaryEntryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
-@Component
 @Service
 public class WordApiService {
 
