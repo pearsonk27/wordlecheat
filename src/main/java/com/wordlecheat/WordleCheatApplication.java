@@ -16,25 +16,17 @@ import com.wordlecheat.strategyanalysis.service.StrategyAnalysisService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.env.Environment;
 
 @SpringBootApplication
-// @EnableJpaRepositories({"com.wordlecheat.dictionary.repository", "com.wordlecheat.strategyanalysis.repository"})
-// @EntityScan({"com.wordlecheat.dictionary.object", "com.wordlecheat.strategyanalysis.object", "com.wordlecheat.strategyanalysis.game"})
-// @ComponentScan({"com.wordlecheat.dictionary.service", "com.wordlecheat.strategyanalysis.service", "com.wordlecheat.builddb"})
 public class WordleCheatApplication {
     
     private static final Logger log = LoggerFactory.getLogger(WordleCheatApplication.class);
     // private static final String[] wordleWords = WordleWords.WORDLE_WORDS;
     private static final String[] wordleWords = Arrays.copyOfRange(WordleWords.WORDLE_WORDS, 0, 2);
-
-    @Autowired
-    Environment env;
 
     public static void main(String[] args) {
 		SpringApplication.run(WordleCheatApplication.class, args);
