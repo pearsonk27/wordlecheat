@@ -6,7 +6,6 @@ import java.util.Map;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameter;
-import org.springframework.batch.core.JobParameters;
 
 /**
  * Needed to avoid the circular reference issues in JobExecution
