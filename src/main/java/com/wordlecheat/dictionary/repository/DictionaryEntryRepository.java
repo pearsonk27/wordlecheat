@@ -5,11 +5,11 @@ import java.util.List;
 
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface DictionaryEntryRepository extends CrudRepository<DictionaryEntry, Integer>, DictionaryEntryRepositoryCustom {
+public interface DictionaryEntryRepository extends PagingAndSortingRepository<DictionaryEntry, Integer>, DictionaryEntryRepositoryCustom {
     
     List<DictionaryEntry> findByWordIgnoreCase(String word);
 
