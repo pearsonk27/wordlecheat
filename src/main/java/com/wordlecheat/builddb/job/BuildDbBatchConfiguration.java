@@ -28,18 +28,16 @@ import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 @Configuration
 @EnableBatchProcessing
-public class BatchConfiguration {
+public class BuildDbBatchConfiguration {
 
-    public static final String BUILD_DB_SINGLE_LETTER_STRING = "buildDbSingleLetterJob";
+    public static final String SINGLE_LETTER_STRING_JOB_NAME = "buildDbSingleLetterJob";
+    public static final String ADD_WORDLE_WORDS_JOB_NAME = "buildDbAddWordleWordsJob";
+    public static final String FULL_BUILD_JOB_NAME = "fullBuildDbJob";
     
 	private JobBuilderFactory jobBuilderFactory;
-
 	private StepBuilderFactory stepBuilderFactory;
-
     private BuildDbService buildDbService;
-
     private DictionaryEntryRepository dictionaryEntryRepository;
-    
     private JobRepository jobRepository;
     
 	@Value("classpath*:/dictionary/*.csv")
@@ -49,7 +47,7 @@ public class BatchConfiguration {
     private Resource allAcceptedWordleWords;
 
     @Autowired
-    public BatchConfiguration(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, BuildDbService buildDbService, DictionaryEntryRepository dictionaryEntryRepository, JobRepository jobRepository) {
+    public BuildDbBatchConfiguration(JobBuilderFactory jobBuilderFactory, StepBuilderFactory stepBuilderFactory, BuildDbService buildDbService, DictionaryEntryRepository dictionaryEntryRepository, JobRepository jobRepository) {
         this.jobBuilderFactory = jobBuilderFactory;
         this.stepBuilderFactory = stepBuilderFactory;
         this.buildDbService = buildDbService;
@@ -58,8 +56,8 @@ public class BatchConfiguration {
     }
     
 	@Bean
-	public MultiResourceItemReader<DictionaryEntry> multiResourceItemreader() {
-		MultiResourceItemReader<DictionaryEntry> reader = new MultiResourceItemReader<>();
+	public MultiResourceItemReader<String> multiResourceItemreader() {
+		MultiResourceItemReader<String> reader = new MultiResourceItemReader<>();
 		reader.setDelegate(flatFileItemReader(null));
 		reader.setResources(inputFiles);
 		return reader;
@@ -67,7 +65,7 @@ public class BatchConfiguration {
 
     @StepScope
     @Bean
-    public FlatFileItemReader<DictionaryEntry> singleDictionaryFileItemReader(@Value("#{jobParameters['letter']}") String letter) {
+    public FlatFileItemReader<String> singleDictionaryFileItemReader(@Value("#{jobParameters['letter']}") String letter) {
         String resourcePath = String.format("dictionary/%s.csv", letter);
         Resource chosenLetterResource = new ClassPathResource(resourcePath);
         return flatFileItemReader(chosenLetterResource);
@@ -76,9 +74,9 @@ public class BatchConfiguration {
 	public CustomDictionaryEntryReader flatFileItemReader(Resource resource) {
 		DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer();
 		tokenizer.setNames(new String[] { "entry" });
-		DefaultLineMapper<DictionaryEntry> dictionaryCsvLineMapper = new DefaultLineMapper<>();
+		DefaultLineMapper<String> dictionaryCsvLineMapper = new DefaultLineMapper<>();
 		dictionaryCsvLineMapper.setLineTokenizer(tokenizer);
-		dictionaryCsvLineMapper.setFieldSetMapper(new DictionaryEntryFieldSetMapper(buildDbService));
+		dictionaryCsvLineMapper.setFieldSetMapper(new DictionaryEntryFieldSetMapper());
 		dictionaryCsvLineMapper.afterPropertiesSet();
 		CustomDictionaryEntryReader reader = new CustomDictionaryEntryReader();
 		reader.setLineMapper(dictionaryCsvLineMapper);
@@ -87,6 +85,21 @@ public class BatchConfiguration {
         }
 		return reader;
 	}
+
+    public FlatFileItemReader<String> wordleWordReader(Resource resource) {
+        DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer();
+		tokenizer.setNames(new String[] { "entry" });
+		DefaultLineMapper<String> dictionaryCsvLineMapper = new DefaultLineMapper<>();
+		dictionaryCsvLineMapper.setLineTokenizer(tokenizer);
+		dictionaryCsvLineMapper.setFieldSetMapper(new WordleWordFieldSetMapper());
+		dictionaryCsvLineMapper.afterPropertiesSet();
+		CustomDictionaryEntryReader reader = new CustomDictionaryEntryReader();
+		reader.setLineMapper(dictionaryCsvLineMapper);
+        if (resource != null) {
+            reader.setResource(resource);
+        }
+		return reader;
+    }
 
     @Bean
     public RepositoryItemWriter<DictionaryEntry> dictionaryEntryWriter() {
@@ -98,18 +111,20 @@ public class BatchConfiguration {
 
     @Bean
     public Step allDictionaryCsvsStep() {
-        return stepBuilderFactory.get("allDictionaryCsvs")
-				.<DictionaryEntry, DictionaryEntry>chunk(1)
+        return stepBuilderFactory.get("allDictionaryCsvsStep")
+				.<String, DictionaryEntry>chunk(1)
 				.reader(multiResourceItemreader())
+                .processor(new DictionaryEntryProcessor(buildDbService))
 				.writer(dictionaryEntryWriter())
 				.build();
     }
 
     @Bean
     public Step singleDictionaryCsvStep() {
-        return stepBuilderFactory.get("singleDictionaryCsv")
-				.<DictionaryEntry, DictionaryEntry>chunk(1)
+        return stepBuilderFactory.get("singleDictionaryCsvStep")
+				.<String, DictionaryEntry>chunk(1)
 				.reader(singleDictionaryFileItemReader("A"))
+                .processor(new DictionaryEntryProcessor(buildDbService))
 				.writer(dictionaryEntryWriter())
 				.build();
     }
@@ -117,15 +132,16 @@ public class BatchConfiguration {
     @Bean
     public Step wordleWordsStep() {
         return stepBuilderFactory.get("wordleWordsStep")
-				.<DictionaryEntry, DictionaryEntry>chunk(10)
-				.reader(flatFileItemReader(allAcceptedWordleWords))
+				.<String, DictionaryEntry>chunk(10)
+				.reader(wordleWordReader(allAcceptedWordleWords))
+                .processor(new WordleWordProcessor(buildDbService))
 				.writer(dictionaryEntryWriter())
 				.build();
     }
 
     @Bean
 	public Job fullBuildDbJob() {
-		return jobBuilderFactory.get("fullBuildDbJob")
+		return jobBuilderFactory.get(FULL_BUILD_JOB_NAME)
 				.start(allDictionaryCsvsStep())
                 .next(wordleWordsStep())
 				.build();
@@ -133,14 +149,14 @@ public class BatchConfiguration {
 
     @Bean
     public Job buildDbAddWordleWordsJob() {
-		return jobBuilderFactory.get("buildDbAddWordleWordsJob")
+		return jobBuilderFactory.get(ADD_WORDLE_WORDS_JOB_NAME)
 				.start(wordleWordsStep())
 				.build();
     }
 
     @Bean
 	public Job buildDbSingleLetterJob() {
-		return jobBuilderFactory.get(BUILD_DB_SINGLE_LETTER_STRING)
+		return jobBuilderFactory.get(SINGLE_LETTER_STRING_JOB_NAME)
                 .start(singleDictionaryCsvStep())
 				.build();
 	}

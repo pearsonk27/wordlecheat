@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.wordlecheat.builddb.job.BatchConfiguration;
+import com.wordlecheat.builddb.job.BuildDbBatchConfiguration;
 import com.wordlecheat.builddb.job.UiJobExecution;
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 import com.wordlecheat.dictionary.object.LetterEnum;
@@ -19,10 +19,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.launch.JobExecutionNotRunningException;
+import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.launch.NoSuchJobExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -31,11 +35,15 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 public class WordleCheatApplicationIntegrationTest {
 
-    private static final String SINGLE_DICTIONARY_BATCH_JOB_URL = "/batch/" + BatchConfiguration.BUILD_DB_SINGLE_LETTER_STRING + "/";
+    private static final String SINGLE_DICTIONARY_BATCH_JOB_URL = "/batch/" + BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME + "/";
     private static final String DICTIONARY_ENTRY_URL = "/api/dictionaryEntries";
+    private static final String ADD_WORDLE_WORDS_BATCH_JOB_URL = "/batch/" + BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME + "/";
 
     @Autowired
     private TestRestTemplate restTemplate;
+
+    @Autowired
+    private JobOperator jobOperator;
 
     /**
      * HTTP POST /batch/buildDbSingleLetterJob/start/{letter}
@@ -101,5 +109,35 @@ public class WordleCheatApplicationIntegrationTest {
             tuple("Zamindar", null, null),
             tuple("Zamindary", null, null),
             tuple("Zamindari", null, null));
+    }
+
+    /**
+     * HTTP POST /batch/buildDbAddWordleWordsJob/start
+     * HTTP GET /batch/buildDbAddWordleWordsJob/{startAt}
+     * HTTP GET /api/dictionaryEntries/search/findByWordIgnoreCase?word=akita
+     * @throws InterruptedException
+     * @throws JobExecutionNotRunningException
+     * @throws NoSuchJobExecutionException
+     */
+    @Test
+    @Order(3)
+    void testBuildDbAddWordleWordsJob() throws InterruptedException, NoSuchJobExecutionException, JobExecutionNotRunningException {
+        String postUrl = ADD_WORDLE_WORDS_BATCH_JOB_URL + "start";
+        ResponseEntity<UiJobExecution> jobExecutionResponse = restTemplate.postForEntity(postUrl, null, UiJobExecution.class);
+        String getWordUrl = DICTIONARY_ENTRY_URL + "/search/findByWordIgnoreCase?word=akita";
+        int timeForJob = 120_000;
+        int timeElapsed = 0;
+        int timePerCheck = 1_000;
+        HttpStatus status = null;
+        while (timeElapsed < timeForJob && status != HttpStatus.OK) {
+            Thread.sleep(timePerCheck);
+            ResponseEntity<String> dictionaryEntryResponse = restTemplate.getForEntity(getWordUrl, String.class);
+            status = dictionaryEntryResponse.getStatusCode();
+            timeElapsed += timePerCheck;
+        }
+        jobOperator.stop(jobExecutionResponse.getBody().getInstanceId());
+        String getJobUrl = ADD_WORDLE_WORDS_BATCH_JOB_URL + jobExecutionResponse.getBody().getJobParameters().get("startAt");
+        jobExecutionResponse = restTemplate.getForEntity(getJobUrl, UiJobExecution.class);
+        assertThat(jobExecutionResponse.getBody().getBatchStatus() == BatchStatus.STOPPED);
     }
 }
