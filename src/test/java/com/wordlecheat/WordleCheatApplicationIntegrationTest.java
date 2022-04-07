@@ -10,14 +10,16 @@ import com.wordlecheat.builddb.job.BuildDbBatchConfiguration;
 import com.wordlecheat.builddb.job.UiJobExecution;
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 import com.wordlecheat.dictionary.object.LetterEnum;
+import com.wordlecheat.strategyanalysis.job.StrategyAnalysisBatchConfiguration;
+import com.wordlecheat.strategyanalysis.object.Strategy;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.launch.JobExecutionNotRunningException;
 import org.springframework.batch.core.launch.JobOperator;
@@ -26,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -38,6 +39,9 @@ public class WordleCheatApplicationIntegrationTest {
     private static final String SINGLE_DICTIONARY_BATCH_JOB_URL = "/batch/" + BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME + "/";
     private static final String DICTIONARY_ENTRY_URL = "/api/dictionaryEntries";
     private static final String ADD_WORDLE_WORDS_BATCH_JOB_URL = "/batch/" + BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME + "/";
+    private static final String STRATEGY_ANALYSIS_BATCH_JOB_URL = "/batch/" + StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME + "/";
+    private static final String STRATEGY_SUCCESS_RATES_URL = "/api/strategySuccessRates";
+    private static final Strategy TEST_STRATEGY = Strategy.RANDOM_GUESS;
 
     @Autowired
     private TestRestTemplate restTemplate;
@@ -55,11 +59,16 @@ public class WordleCheatApplicationIntegrationTest {
     @Order(1)
     void testSingleDictionaryLetterJobExecution() throws InterruptedException {
         String postUrl = SINGLE_DICTIONARY_BATCH_JOB_URL + "start/" + LetterEnum.Z.name();
-        ResponseEntity<UiJobExecution> jobExecutionResponse = restTemplate.postForEntity(postUrl, null, UiJobExecution.class);
-        String getUrl = SINGLE_DICTIONARY_BATCH_JOB_URL + LetterEnum.Z.name() + "/" + jobExecutionResponse.getBody().getJobParameters().get("startAt");
-        int timeForJob = 120_000;
+        String getUrlFormat = SINGLE_DICTIONARY_BATCH_JOB_URL + LetterEnum.Z.name() + "/%s";
+        tRunJob(postUrl, getUrlFormat);
+    }
+
+    private void tRunJob(String postUrl, String getUrlFormat) throws InterruptedException {
+        int timeForJob = 240_000;
         int timeElapsed = 0;
         int timePerCheck = 1_000;
+        ResponseEntity<UiJobExecution> jobExecutionResponse = restTemplate.postForEntity(postUrl, null, UiJobExecution.class);
+        String getUrl = String.format(getUrlFormat, jobExecutionResponse.getBody().getJobParameters().get("startAt"));
         BatchStatus status = BatchStatus.STARTED;
         while (timeElapsed < timeForJob && status != BatchStatus.COMPLETED) {
             Thread.sleep(timePerCheck);
@@ -83,10 +92,8 @@ public class WordleCheatApplicationIntegrationTest {
             DictionaryEntry dictionaryEntry = new DictionaryEntry();
             JSONObject json = dictionaryEntryJsonArray.getJSONObject(i);
             dictionaryEntry.setWord(json.getString("word"));
-            if (dictionaryEntry.getWord().length() == 5) {
-                dictionaryEntry.setFrequency(json.getDouble("frequency"));
-                dictionaryEntry.setLetterFrequency(json.getDouble("letterFrequency"));
-            }
+            dictionaryEntry.setFrequency(Double.isNaN(json.optDouble("frequency")) ? null : json.optDouble("frequency"));
+            dictionaryEntry.setLetterFrequency(Double.isNaN(json.optDouble("letterFrequency")) ? null : json.optDouble("letterFrequency"));
             dictionaryEntries.add(dictionaryEntry);
         }
         assertThat(dictionaryEntries).extracting(DictionaryEntry::getWord, DictionaryEntry::getFrequency, DictionaryEntry::getLetterFrequency).containsExactly(tuple("Z", null, null),
@@ -118,26 +125,55 @@ public class WordleCheatApplicationIntegrationTest {
      * @throws InterruptedException
      * @throws JobExecutionNotRunningException
      * @throws NoSuchJobExecutionException
+     * @throws JSONException
      */
     @Test
     @Order(3)
-    void testBuildDbAddWordleWordsJob() throws InterruptedException, NoSuchJobExecutionException, JobExecutionNotRunningException {
+    void testBuildDbAddWordleWordsJob() throws InterruptedException, NoSuchJobExecutionException, JobExecutionNotRunningException, JSONException {
         String postUrl = ADD_WORDLE_WORDS_BATCH_JOB_URL + "start";
         ResponseEntity<UiJobExecution> jobExecutionResponse = restTemplate.postForEntity(postUrl, null, UiJobExecution.class);
         String getWordUrl = DICTIONARY_ENTRY_URL + "/search/findByWordIgnoreCase?word=akita";
         int timeForJob = 120_000;
         int timeElapsed = 0;
         int timePerCheck = 1_000;
-        HttpStatus status = null;
-        while (timeElapsed < timeForJob && status != HttpStatus.OK) {
+        JSONArray dictionaryEntryJsonArray = new JSONArray();
+        while (timeElapsed < timeForJob && dictionaryEntryJsonArray.length() == 0) {
             Thread.sleep(timePerCheck);
             ResponseEntity<String> dictionaryEntryResponse = restTemplate.getForEntity(getWordUrl, String.class);
-            status = dictionaryEntryResponse.getStatusCode();
+            dictionaryEntryJsonArray = new JSONObject(dictionaryEntryResponse.getBody()).getJSONObject("_embedded").getJSONArray("dictionaryEntries");
             timeElapsed += timePerCheck;
         }
         jobOperator.stop(jobExecutionResponse.getBody().getInstanceId());
         String getJobUrl = ADD_WORDLE_WORDS_BATCH_JOB_URL + jobExecutionResponse.getBody().getJobParameters().get("startAt");
         jobExecutionResponse = restTemplate.getForEntity(getJobUrl, UiJobExecution.class);
         assertThat(jobExecutionResponse.getBody().getBatchStatus() == BatchStatus.STOPPED);
+    }
+
+    /**
+     * HTTP POST /batch/strategyAnalysisJob/start/{strategy}
+     * HTTP GET /strategyAnalysisJob/{strategy}/{startAt}
+     * @throws InterruptedException
+     */
+    @Test
+    @Order(4)
+    void testStrategyAnalysisJob() throws InterruptedException {
+        String postUrl = STRATEGY_ANALYSIS_BATCH_JOB_URL + "start/" + TEST_STRATEGY.name();
+        String getUrlFormat = STRATEGY_ANALYSIS_BATCH_JOB_URL + TEST_STRATEGY.name() + "/%s";
+        tRunJob(postUrl, getUrlFormat);
+    }
+
+    /**
+     * HTTP GET /api/strategySuccessRates
+     * @throws JSONException
+     */
+    @Test
+    @Order(5)
+    void testStrategySuccessRates() throws JSONException {
+        ResponseEntity<String> strategySuccessRatesResponse = restTemplate.getForEntity(STRATEGY_SUCCESS_RATES_URL, String.class);
+        JSONObject strategySuccessRateJson = new JSONObject(strategySuccessRatesResponse.getBody()).getJSONObject("_embedded").getJSONArray("strategySuccessRates").getJSONObject(0);
+        String strategyName = strategySuccessRateJson.getString("strategy");
+        double successRate = strategySuccessRateJson.getDouble("successRate");
+        assertThat(strategyName).isEqualTo(TEST_STRATEGY.name());
+        assertThat(successRate).isBetween(0.0, 1.0);
     }
 }

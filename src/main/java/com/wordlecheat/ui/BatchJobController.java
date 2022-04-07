@@ -1,8 +1,10 @@
 package com.wordlecheat.ui;
 
-import com.wordlecheat.builddb.job.BatchConfiguration;
+import com.wordlecheat.builddb.job.BuildDbBatchConfiguration;
 import com.wordlecheat.builddb.job.UiJobExecution;
 import com.wordlecheat.dictionary.object.LetterEnum;
+import com.wordlecheat.strategyanalysis.job.StrategyAnalysisBatchConfiguration;
+import com.wordlecheat.strategyanalysis.object.Strategy;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
@@ -24,30 +26,36 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(path = "/batch")
 public class BatchJobController {
+
+    private static final String START_AT_PARAMETER_NAME = "startAt";
     
     @Autowired
     @Qualifier("asynchJobLauncher")
     private JobLauncher jobLauncher;
     
     @Autowired
-    @Qualifier("fullBuildDbJob")
+    @Qualifier(BuildDbBatchConfiguration.FULL_BUILD_JOB_NAME)
     private Job fullBuildDbJob;
     
     @Autowired
-    @Qualifier(BatchConfiguration.BUILD_DB_SINGLE_LETTER_STRING)
+    @Qualifier(BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME)
     private Job buildDbSingleLetterJob;
     
     @Autowired
-    @Qualifier("buildDbAddWordleWordsJob")
+    @Qualifier(BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME)
     private Job buildDbAddWordleWordsJob;
+
+    @Autowired
+    @Qualifier(StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME)
+    private Job strategyAnalysisJob;
 
     @Autowired
     private JobRepository jobRepository;
 
-    @PostMapping(path = "/" + BatchConfiguration.BUILD_DB_SINGLE_LETTER_STRING + "/start/{letter}")
+    @PostMapping(path = "/" + BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME + "/start/{letter}")
     public UiJobExecution startBuildDbSingleLetterJob(@PathVariable LetterEnum letter) {
         JobParameters jobParameters = new JobParametersBuilder()
-                .addLong("startAt", System.currentTimeMillis())
+                .addLong(START_AT_PARAMETER_NAME, System.currentTimeMillis())
                 .addString("letter", letter.name())
                 .toJobParameters();
         try {
@@ -55,40 +63,86 @@ public class BatchJobController {
         } catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
             e.printStackTrace();
         }
-        return new UiJobExecution(jobRepository.getLastJobExecution(BatchConfiguration.BUILD_DB_SINGLE_LETTER_STRING, jobParameters));
+        return new UiJobExecution(jobRepository.getLastJobExecution(BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME, jobParameters));
     }
 
-    @GetMapping(path = "/" + BatchConfiguration.BUILD_DB_SINGLE_LETTER_STRING + "/{letter}/{startAt}")
+    @GetMapping(path = "/" + BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME + "/{letter}/{startAt}")
     public UiJobExecution getCurrentBuildDbSingleLetterJob(@PathVariable LetterEnum letter, @PathVariable long startAt) {
         JobParameters jobParameters = new JobParametersBuilder()
-                .addLong("startAt", startAt)
+                .addLong(START_AT_PARAMETER_NAME, startAt)
                 .addString("letter", letter.name())
                 .toJobParameters();
-        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(BatchConfiguration.BUILD_DB_SINGLE_LETTER_STRING, jobParameters));
+        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME, jobParameters));
         return jobExecution;
     }
 
-    @PostMapping(path = "/fullBuildDbJob/start")
-    public void startFullBuildDbJob() {
+    @PostMapping(path = "/" + BuildDbBatchConfiguration.FULL_BUILD_JOB_NAME + "/start")
+    public UiJobExecution startFullBuildDbJob() {
         JobParameters jobParameters = new JobParametersBuilder()
-                .addLong("startAt", System.currentTimeMillis())
+                .addLong(START_AT_PARAMETER_NAME, System.currentTimeMillis())
                 .toJobParameters(); 
         try {
             jobLauncher.run(fullBuildDbJob, jobParameters);
         } catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
             e.printStackTrace();
         }
+        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(BuildDbBatchConfiguration.FULL_BUILD_JOB_NAME, jobParameters));
+        return jobExecution;
     }
 
-    @PostMapping(path = "/buildDbAddWordleWordsJob/start")
-    public void startBuildDbAddWordleWordsJob() {
+    @GetMapping(path = "/" + BuildDbBatchConfiguration.FULL_BUILD_JOB_NAME + "/{startAt}")
+    public UiJobExecution getFullBuildDbJob(@PathVariable long startAt) {
         JobParameters jobParameters = new JobParametersBuilder()
-                .addLong("startAt", System.currentTimeMillis())
+                .addLong(START_AT_PARAMETER_NAME, startAt)
+                .toJobParameters();
+        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(BuildDbBatchConfiguration.FULL_BUILD_JOB_NAME, jobParameters));
+        return jobExecution;
+    }
+
+    @PostMapping(path = "/" + BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME + "/start")
+    public UiJobExecution startBuildDbAddWordleWordsJob() {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong(START_AT_PARAMETER_NAME, System.currentTimeMillis())
                 .toJobParameters(); 
         try {
             jobLauncher.run(buildDbAddWordleWordsJob, jobParameters);
         } catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
             e.printStackTrace();
         }
+        return new UiJobExecution(jobRepository.getLastJobExecution(BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME, jobParameters));
+    }
+
+    @GetMapping(path = "/" + BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME + "/{startAt}")
+    public UiJobExecution getBuildDbAddWordleWordsJob(@PathVariable long startAt) {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong(START_AT_PARAMETER_NAME, startAt)
+                .toJobParameters();
+        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME, jobParameters));
+        return jobExecution;
+    }
+
+    @PostMapping(path = "/" + StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME + "/start/{strategy}")
+    public UiJobExecution startStrategyAnalysisJob(@PathVariable Strategy strategy) {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong(START_AT_PARAMETER_NAME, System.currentTimeMillis())
+                .addString("strategy", strategy.name())
+                .toJobParameters();
+        try {
+            jobLauncher.run(strategyAnalysisJob, jobParameters);
+        } catch (JobExecutionAlreadyRunningException | JobRestartException | JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
+            e.printStackTrace();
+        }
+        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME, jobParameters));
+        return jobExecution;
+    }
+
+    @GetMapping(path = "/" + StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME + "/{strategy}/{startAt}")
+    public UiJobExecution getStrategyAnalysisJob(@PathVariable Strategy strategy, @PathVariable long startAt) {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong(START_AT_PARAMETER_NAME, startAt)
+                .addString("strategy", strategy.name())
+                .toJobParameters();
+        UiJobExecution jobExecution = new UiJobExecution(jobRepository.getLastJobExecution(StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME, jobParameters));
+        return jobExecution;
     }
 }
