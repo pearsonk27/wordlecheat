@@ -7,39 +7,34 @@ import com.wordlecheat.strategyanalysis.game.Guess;
 import com.wordlecheat.strategyanalysis.game.GuessOutcome;
 import com.wordlecheat.strategyanalysis.object.Strategy;
 import com.wordlecheat.strategyanalysis.object.StrategyExecution;
-import com.wordlecheat.strategyanalysis.repository.StrategyExecutionRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
-@Component
 @Service
 public class StrategyAnalysisService {
 
     private static final Logger log = LoggerFactory.getLogger(StrategyAnalysisService.class);
 
     private DictionaryEntryRepository dictionaryEntryRepository;
-    private StrategyExecutionRepository strategyExecutionRepository;
     private GuessService guessService;
     
     @Autowired
     public StrategyAnalysisService(DictionaryEntryRepository dictionaryEntryRepository,
-    StrategyExecutionRepository strategyExecutionRepository, GuessService guessService) {
+            GuessService guessService) {
         this.dictionaryEntryRepository = dictionaryEntryRepository;
-        this.strategyExecutionRepository = strategyExecutionRepository;
         this.guessService = guessService;
     }
 
-    public void playGame(Strategy strategy, String wordleWord) {
+    public StrategyExecution playGame(Strategy strategy, String wordleWord) {
         DictionaryEntry dictionaryEntry = dictionaryEntryRepository.findByWordIgnoreCase(wordleWord).get(0);
-        playGame(strategy, dictionaryEntry);
+        return playGame(strategy, dictionaryEntry);
     }
 
-    public void playGame(Strategy strategy, DictionaryEntry dictionaryEntry) {
+    public StrategyExecution playGame(Strategy strategy, DictionaryEntry dictionaryEntry) {
         StrategyExecution strategyExecution = new StrategyExecution(strategy, dictionaryEntry);
         GameState gameState = new GameState(dictionaryEntry.getWord().length());
         while (strategyExecution.isInProgress()) {
@@ -52,7 +47,7 @@ public class StrategyAnalysisService {
             gameState.updateGameState(guessOutcome);
             strategyExecution.setSuccess(guessOutcome.isCorrectGuess());
         }
-        strategyExecutionRepository.save(strategyExecution);
+        return strategyExecution;
     }
 
     private void makeGuess(StrategyExecution strategyExecution, GameState gameState) {

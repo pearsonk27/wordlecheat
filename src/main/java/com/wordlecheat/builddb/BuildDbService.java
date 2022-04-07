@@ -4,11 +4,9 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 
-import com.wordlecheat.dictionary.DictionaryFileReader;
 import com.wordlecheat.dictionary.object.Definition;
 import com.wordlecheat.dictionary.object.DictionaryEntry;
 import com.wordlecheat.dictionary.object.LetterEnum;
-import com.wordlecheat.dictionary.object.WordleWords;
 import com.wordlecheat.dictionary.repository.DictionaryEntryRepository;
 import com.wordlecheat.dictionary.service.WordApiService;
 
@@ -32,53 +30,15 @@ public class BuildDbService {
         this.wordApiService = wordApiService;
     }
 
-    public void buildDictionary() throws IOException {
-        log.info("Beginning database build");
-        DictionaryFileReader dictionaryFileReader = new DictionaryFileReader();
-        String entry;
-        while ((entry = dictionaryFileReader.getNextDictionaryEntry()) != null) {
-        	DictionaryEntry dictionaryEntry = null;
-        	try {
-        		dictionaryEntry = new DictionaryEntry(entry);
-        	} catch (StringIndexOutOfBoundsException ex) {
-        		log.warn("Incorrectly formatted dictionary entry: {}", entry);
-        		continue;
-        	}
-        	List<DictionaryEntry> entries = dictionaryEntryRepository.findByWordIgnoreCase(dictionaryEntry.getWord());
-        	if (entries != null && !entries.isEmpty()) {
-        		dictionaryEntry = entries.get(0);
-        		dictionaryEntry.addDefinition(new Definition(entry));
-        	}
-        	if (dictionaryEntry.isValidWordlerWord()) {
-                if (dictionaryEntry.getFrequency() == null && dictionaryEntry.getLastCheckedFrequency() == null) {
-                    dictionaryEntry.setLastCheckedFrequency(new Date());
-                    try {
-                        dictionaryEntry.setFrequency(wordApiService.getWordFrequency(dictionaryEntry.getWord()));
-                    } catch (Exception ex) {
-                        String message = String.format("Failed to get frequency for word: %s", dictionaryEntry.getWord());
-                        log.error(message, ex);
-                    }
-                }
-                dictionaryEntry.setLetterFrequency(0.0);
-                for (LetterEnum letter : LetterEnum.values()) {
-                    if (dictionaryEntry.getWord().toLowerCase().contains(letter.toString().toLowerCase())) {
-                        dictionaryEntry.setLetterFrequency(dictionaryEntry.getLetterFrequency() + letter.getFrequency());
-                    }
-                }
-        	}
-        	dictionaryEntryRepository.save(dictionaryEntry);
+    public DictionaryEntry buildDictionaryEntryFromDefinitionLine(String entry) throws IOException {
+        DictionaryEntry dictionaryEntry = new DictionaryEntry(entry);
+        List<DictionaryEntry> entries = dictionaryEntryRepository.findByWordIgnoreCase(dictionaryEntry.getWord());
+        if (entries != null && !entries.isEmpty()) {
+            dictionaryEntry = entries.get(0);
+            dictionaryEntry.addDefinition(new Definition(entry));
         }
-        addWordleWords();
-        log.info("Finished database build");
-    }
-
-    private void addWordleWords() {
-        for (String wordleWord : WordleWords.WORDLE_WORDS) {
-            List<DictionaryEntry> dictionaryEntries = dictionaryEntryRepository.findByWordIgnoreCase(wordleWord);
-            if (dictionaryEntries.isEmpty()) {
-                DictionaryEntry dictionaryEntry = new DictionaryEntry();
-                log.info("Adding {}", WordUtils.capitalize(wordleWord));
-                dictionaryEntry.setWord(WordUtils.capitalize(wordleWord));
+        if (dictionaryEntry.isValidWordlerWord()) {
+            if (dictionaryEntry.getFrequency() == null && dictionaryEntry.getLastCheckedFrequency() == null) {
                 dictionaryEntry.setLastCheckedFrequency(new Date());
                 try {
                     dictionaryEntry.setFrequency(wordApiService.getWordFrequency(dictionaryEntry.getWord()));
@@ -86,14 +46,39 @@ public class BuildDbService {
                     String message = String.format("Failed to get frequency for word: %s", dictionaryEntry.getWord());
                     log.error(message, ex);
                 }
-                dictionaryEntry.setLetterFrequency(0.0);
-                for (LetterEnum letter : LetterEnum.values()) {
-                    if (dictionaryEntry.getWord().toLowerCase().contains(letter.toString().toLowerCase())) {
-                        dictionaryEntry.setLetterFrequency(dictionaryEntry.getLetterFrequency() + letter.getFrequency());
-                    }
-                }
-                dictionaryEntryRepository.save(dictionaryEntry);
             }
+            dictionaryEntry.setLetterFrequency(0.0);
+            for (LetterEnum letter : LetterEnum.values()) {
+                if (dictionaryEntry.getWord().toLowerCase().contains(letter.toString().toLowerCase())) {
+                    dictionaryEntry.setLetterFrequency(dictionaryEntry.getLetterFrequency() + letter.getFrequency());
+                }
+            }
+        }
+        return dictionaryEntry;
+    }
+
+    public DictionaryEntry buildDictionaryEntryFromWord(String word) {
+        List<DictionaryEntry> dictionaryEntries = dictionaryEntryRepository.findByWordIgnoreCase(word);
+        if (dictionaryEntries.isEmpty()) {
+            DictionaryEntry dictionaryEntry = new DictionaryEntry();
+            log.info("Adding {}", WordUtils.capitalize(word));
+            dictionaryEntry.setWord(WordUtils.capitalize(word));
+            dictionaryEntry.setLastCheckedFrequency(new Date());
+            try {
+                dictionaryEntry.setFrequency(wordApiService.getWordFrequency(dictionaryEntry.getWord()));
+            } catch (Exception ex) {
+                String message = String.format("Failed to get frequency for word: %s", dictionaryEntry.getWord());
+                log.error(message, ex);
+            }
+            dictionaryEntry.setLetterFrequency(0.0);
+            for (LetterEnum letter : LetterEnum.values()) {
+                if (dictionaryEntry.getWord().toLowerCase().contains(letter.toString().toLowerCase())) {
+                    dictionaryEntry.setLetterFrequency(dictionaryEntry.getLetterFrequency() + letter.getFrequency());
+                }
+            }
+            return dictionaryEntry;
+        } else {
+            return null;
         }
     }
 }

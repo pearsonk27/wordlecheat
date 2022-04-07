@@ -41,9 +41,7 @@ public class DictionaryEntry {
     @Column(name = "letter_frequency")
     private Double letterFrequency;
 
-    public DictionaryEntry() {
-
-    }
+    public DictionaryEntry() {}
 
     public DictionaryEntry(String entry) throws StringIndexOutOfBoundsException {
         String word = entry.substring(0, entry.indexOf("(") - 1).trim();
