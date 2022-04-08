@@ -12,10 +12,10 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
-import org.springframework.stereotype.Repository;
 
-@Repository
+@RepositoryRestResource(collectionResourceRel = "dictionary", path = "dictionary", itemResourceRel = "Dictionary")
 @Cacheable
 @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
 public interface DictionaryEntryRepository extends PagingAndSortingRepository<DictionaryEntry, Integer>, DictionaryEntryRepositoryCustom {
@@ -30,4 +30,13 @@ public interface DictionaryEntryRepository extends PagingAndSortingRepository<Di
 
     @RestResource(exported = false)
     List<DictionaryEntry> findByFrequencyGreaterThan(Double frequency);
+
+    @Override
+    @RestResource(exported = false)
+    <S extends DictionaryEntry> S save(S s);
+
+    //Not exposed by Spring Data REST
+    @Override
+    @RestResource(exported = false)
+    void deleteById(Integer s);
 }
