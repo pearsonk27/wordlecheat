@@ -37,7 +37,7 @@ import org.springframework.test.context.ActiveProfiles;
 public class WordleCheatApplicationIntegrationTest {
 
     private static final String SINGLE_DICTIONARY_BATCH_JOB_URL = "/batch/" + BuildDbBatchConfiguration.SINGLE_LETTER_STRING_JOB_NAME + "/";
-    private static final String DICTIONARY_ENTRY_URL = "/api/dictionaryEntries";
+    private static final String DICTIONARY_ENTRY_URL = "/api/dictionary";
     private static final String ADD_WORDLE_WORDS_BATCH_JOB_URL = "/batch/" + BuildDbBatchConfiguration.ADD_WORDLE_WORDS_JOB_NAME + "/";
     private static final String STRATEGY_ANALYSIS_BATCH_JOB_URL = "/batch/" + StrategyAnalysisBatchConfiguration.STRATEGY_ANALYSIS_JOB_NAME + "/";
     private static final String STRATEGY_SUCCESS_RATES_URL = "/api/strategySuccessRates";
@@ -86,7 +86,7 @@ public class WordleCheatApplicationIntegrationTest {
     @Order(2)
     void testWordPlacements() throws JSONException {
         ResponseEntity<String> dictionaryEntriesResponse = restTemplate.getForEntity(DICTIONARY_ENTRY_URL, String.class);
-        JSONArray dictionaryEntryJsonArray = new JSONObject(dictionaryEntriesResponse.getBody()).getJSONObject("_embedded").getJSONArray("dictionaryEntries");
+        JSONArray dictionaryEntryJsonArray = new JSONObject(dictionaryEntriesResponse.getBody()).getJSONObject("_embedded").getJSONArray("dictionary");
         List<DictionaryEntry> dictionaryEntries = new ArrayList<>();
         for (int i = 0; i < dictionaryEntryJsonArray.length(); i++) {
             DictionaryEntry dictionaryEntry = new DictionaryEntry();
@@ -140,7 +140,7 @@ public class WordleCheatApplicationIntegrationTest {
         while (timeElapsed < timeForJob && dictionaryEntryJsonArray.length() == 0) {
             Thread.sleep(timePerCheck);
             ResponseEntity<String> dictionaryEntryResponse = restTemplate.getForEntity(getWordUrl, String.class);
-            dictionaryEntryJsonArray = new JSONObject(dictionaryEntryResponse.getBody()).getJSONObject("_embedded").getJSONArray("dictionaryEntries");
+            dictionaryEntryJsonArray = new JSONObject(dictionaryEntryResponse.getBody()).getJSONObject("_embedded").getJSONArray("dictionary");
             timeElapsed += timePerCheck;
         }
         jobOperator.stop(jobExecutionResponse.getBody().getInstanceId());
